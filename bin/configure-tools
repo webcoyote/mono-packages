@@ -1,0 +1,21 @@
+#!/bin/bash
+set -e          # crash on errors
+set -u          # crash on undefined variables
+set -o pipefail # crash when intermediate program in pipe fails
+
+
+GITHUB_RELEASE_TOOL_VERSION=0.3
+
+
+# Install the github release tool
+if [[ ! -x /usr/local/bin/github-release ]]; then
+  TMPDIR=$(mktemp -d)
+  pushd >/dev/null "$TMPDIR"
+
+  curl -LO https://github.com/aktau/github-release/releases/download/v${GITHUB_RELEASE_TOOL_VERSION}/linux-amd64-github-release.tar.bz2
+  tar --strip-components=3 -xf linux-amd64-github-release.tar.bz2
+  sudo cp github-release /usr/local/bin
+
+  popd >/dev/null
+  rm -rf "$TMPDIR"
+fi

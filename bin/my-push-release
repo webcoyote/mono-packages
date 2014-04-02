@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e          # crash on errors
+set -u          # crash on undefined variables
+set -o pipefail # crash when intermediate program in pipe fails
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Import GITHUB_USER, GITHUB_TOKEN
+source "$HOME/Private/credentials/github-public-repo-access-token"
+
+# Run the real script
+"$SCRIPT_DIR/push-release" "$@"

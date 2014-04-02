@@ -1,0 +1,83 @@
+#!/bin/bash
+set -e          # crash on errors
+set -u          # crash on undefined variables
+set -o pipefail # crash when intermediate program in pipe fails
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+
+# Utility functions
+info () {
+  echo >&2 -e "\033[36m$@\033[0m"
+}
+warn () {
+  echo >&2 -e "\033[33m$@\033[0m"
+}
+error () {
+  echo >&2 -e "\033[31m$@\033[0m"
+}
+fatal () {
+  error "$@"
+  exit 1
+}
+
+
+# Parse command line
+if [[ -z "${1:-}" ]]; then
+  info "Usage: $(basename $0) FILENAME"
+  info "FILENAME must be of the form 'mono_X.Y.Z-1_amd64.deb'"
+  exit 1
+fi
+
+
+# Get file to upload for release
+FILEPATH="$1"
+[[ -f "$FILEPATH" ]] || fatal "File '$FILEPATH' not found"
+
+
+# Extract version number from package filename
+REGEX="mono_([0-9]+\.[0-9]+\.[0-9]+)-1_amd64.deb"
+FILENAME=$(basename "$FILEPATH")
+[[ $FILENAME =~ $REGEX ]] || fatal "Cannot extract version number from '$FILEPATH' using '$REGEX'"
+TAG="${BASH_REMATCH[1]}"  # ex: "3.4.0"
+
+
+# Import github variables
+[[ -n "${GITHUB_USER:-}" ]]  || fatal  "ERROR: variable GITHUB_USER not set"
+[[ -n "${GITHUB_TOKEN:-}" ]] || fatal "ERROR: variable GITHUB_TOKEN not set"
+
+
+# Install github-release
+"$SCRIPT_DIR/configure-tools"
+
+
+# Add an empty commit so that the release gets associated with the new commit
+if git rev-parse "v$TAG" >/dev/null 2>&1 ; then
+  fatal "Mono v$TAG already exists"
+fi
+git commit --allow-empty -m "version $TAG"
+git push origin --all
+
+
+# Delete release on error
+trap "                        \
+      github-release delete   \
+      --repo mono-packages    \
+      --tag \"$TAG\"          \
+    "                         \
+    SIGHUP SIGINT SIGTERM     #
+
+
+# Create release
+github-release release                              \
+    --repo mono-packages                            \
+    --tag  "v$TAG"                                  \
+    --name "Mono $TAG"                              \
+    --description "Mono $TAG compiled from source"  #
+
+
+# upload package file
+github-release upload       \
+    --repo mono-packages    \
+    --tag  "v$TAG"          \
+    --name "$FILENAME"      \
+    --file "$FILEPATH"      #
