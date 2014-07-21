@@ -24,7 +24,9 @@ fatal () {
 # Parse command line
 if [[ -z "${1:-}" ]]; then
   info "Usage: $(basename $0) FILENAME"
-  info "FILENAME must be of the form 'mono_X.Y.Z-1_amd64.deb'"
+  info "FILENAME must be one of the following forms:"
+  info "  'mono_A.B.C-1_amd64.deb'"
+  info "  'mono_A.B.C.D-1_amd64.deb'"
   exit 1
 fi
 
@@ -35,11 +37,10 @@ FILEPATH="$1"
 
 
 # Extract version number from package filename
-REGEX="mono_([0-9]+\.[0-9]+\.[0-9]+)-1_amd64.deb"
+REGEX="mono_([0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+){0,1})-1_amd64.deb"
 FILENAME=$(basename "$FILEPATH")
 [[ $FILENAME =~ $REGEX ]] || fatal "Cannot extract version number from '$FILEPATH' using '$REGEX'"
-TAG="${BASH_REMATCH[1]}"  # ex: "3.4.0"
-
+TAG="${BASH_REMATCH[1]}"  # ex: "3.4.0.204" or "3.4.0"
 
 # Import github variables
 [[ -n "${GITHUB_USER:-}" ]]  || fatal  "ERROR: variable GITHUB_USER not set"
